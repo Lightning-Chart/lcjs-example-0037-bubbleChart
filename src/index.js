@@ -1,5 +1,5 @@
-const lcjs = require('@arction/lcjs')
-const { lightningChart, PointShape, Themes } = lcjs
+const lcjs = require('@lightningchart/lcjs')
+const { lightningChart, PointShape, emptyLine, Themes } = lcjs
 
 const chart = lightningChart({
             resourcesBaseUrl: new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pathname + 'resources/',
@@ -8,6 +8,19 @@ const chart = lightningChart({
         theme: Themes[new URLSearchParams(window.location.search).get('theme') || 'darkGold'] || undefined,
     })
     .setTitle('Bubble Chart with 3 KPIs and data grouping')
+    .setCursorMode('show-nearest')
+    .setCursorFormatting((_, hit) => {
+        // `hit` contains only built-in data point properties, such as "x", "y", "size", "id" etc.
+        // in order to use custom user-specific properties, such as "kpi3", we have to use ids to find the original data point from users data set.
+        const iSeries = chart.getSeries().indexOf(hit.series)
+        const origSample = groupsData[iSeries][hit.id]
+        return [
+            [hit.series],
+            ['X', '', hit.axisX.formatValue(hit.x)],
+            ['Y', '', hit.axisY.formatValue(hit.y)],
+            ['KPI3', '', origSample.kpi3.toFixed(3)],
+        ]
+    })
 
 // Generate random data set for example purposes
 // color by group where data point belongs
@@ -23,8 +36,7 @@ const groupsData = new Array(3).fill(0).map((_) => {
         const kpi3 = Math.random()
         // Map 3rd performance indicator value to a point size as pixels.
         const size = 1 + 19 * kpi3 ** 3
-        // kpi3 value is also stored in data point for use in cursor formatting
-        data[i] = { x, y, size, kpi3 }
+        data[i] = { id: i, x, y, size, kpi3 }
     }
     return data
 })
@@ -35,18 +47,11 @@ const groupsData = new Array(3).fill(0).map((_) => {
 
 const groupsSeries = groupsData.map((data, i) => {
     const pointSeries = chart
-        .addPointSeries({ pointShape: PointShape.Circle })
+        .addPointLineAreaSeries({ dataPattern: null, sizes: true, ids: true })
         .setName(`Group ${i + 1}`)
+        .setStrokeStyle(emptyLine)
         .setPointFillStyle((fillStyle) => fillStyle.setA(100))
-        .setIndividualPointSizeEnabled(true)
-        .add(data)
-        .setCursorResultTableFormatter((builder, _, x, y, dataPoint) =>
-            builder
-                .addRow(pointSeries.getName())
-                .addRow(pointSeries.axisX.getTitle(), '', pointSeries.axisX.formatValue(dataPoint.x))
-                .addRow(pointSeries.axisY.getTitle(), '', pointSeries.axisY.formatValue(dataPoint.y))
-                .addRow('KPI 3', '', dataPoint.kpi3.toFixed(3)),
-        )
+        .appendJSON(data, { x: 'x', y: 'y', size: 'size', id: 'id' })
     return pointSeries
 })
 
