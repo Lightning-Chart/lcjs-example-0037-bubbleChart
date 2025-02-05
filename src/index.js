@@ -15,7 +15,7 @@ const chart = lightningChart({
         const iSeries = chart.getSeries().indexOf(hit.series)
         const origSample = groupsData[iSeries][hit.id]
         return [
-            [hit.series],
+            [{ component: hit.series, rowFillStyle: chart.getTheme().cursorResultTableHeaderBackgroundFillStyle }],
             ['X', '', hit.axisX.formatValue(hit.x)],
             ['Y', '', hit.axisY.formatValue(hit.y)],
             ['KPI3', '', origSample.kpi3.toFixed(3)],
